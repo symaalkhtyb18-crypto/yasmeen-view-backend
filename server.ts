@@ -1,5 +1,6 @@
 import express from 'express';
-import { Request, Response } from 'express';
+import pkg from 'express';
+const { Request, Response } = pkg;
 import mysql from 'mysql2';
 import cors from 'cors';
 
@@ -65,7 +66,7 @@ db.connect((err) => {
 });
 
 // 2. الـ API الخاص بجلب الطلبات المفلترة برقم الطاولة (لحل مشكلة تكدس طلبات الزبائن الآخرين)
-app.get('/api/orders', (req: Request, res: Response) => {
+app.get('/api/orders', (req: any, res: any) => {
     const tableNumber = req.query.table; // استقبال رقم الطاولة كـ Query Parameter من الـ React
 
     if (!tableNumber) {
@@ -85,7 +86,7 @@ app.get('/api/orders', (req: Request, res: Response) => {
 });
 
 // 3. الـ API الخاص باستقبال وحفظ الفاتورة والطلبات الكاملة من السلة
-app.post('/api/orders', (req: Request, res: Response) => {
+app.post('/api/orders', (req: any, res: any) => {
     const { order_id, table_number, subtotal, additions_cost, final_total, items } = req.body;
 
     // أ. إدخال الطلب الرئيسي في جدول orders
