@@ -5,7 +5,9 @@ import mysql from 'mysql2';
 import cors from 'cors';
 
 const app = express();
-app.use(cors());
+
+// ترتيب الفلاتر مهم جداً: الـ CORS المفتوح أولاً غصب عن السحاب!
+app.use(cors({ origin: '*' }));
 app.use(express.json()); // لتمكين السيرفر من قراءة بيانات JSON القادمة من المنيو
 
 // 1. إعداد الاتصال بقاعدة بيانات MySQL السحابية (Aiven Cloud)
@@ -70,7 +72,13 @@ app.get('/api/orders', (req: any, res: any) => {
     const tableNumber = req.query.table; // استقبال رقم الطاولة كـ Query Parameter من الـ React
 
     if (!tableNumber) {
-        return res.status(400).json({ error: 'رقم الطاولة مطلوب لفلترة البيانات وعرض الفواتير الصحيحة' });
+        // إذا لم يرسل رقم طاولة (مثل الكاشير)، نجلب جميع الطلبات
+        const queryAll = `SELECT * FROM orders ORDER BY created_at DESC`;
+        db.query(queryAll, (err, results) => {
+            if (err) return res.status(500).json({ error: err.message });
+            return res.json(results);
+        });
+        return;
     }
 
     // استعلام محدد لجلب طلبات هذه الطاولة فقط مرتبة من الأحدث إلى الأقدم
@@ -126,7 +134,22 @@ app.post('/api/orders', (req: any, res: any) => {
     });
 });
 
-// 4. تشغيل السيرفر وتحديد المنفذ
+// 4. الـ API الخاص بتحديث حالة الطلب من شاشة الكاشير سحابياً (PUT)
+app.put('/api/orders/:id', (req: any, res: any) => {
+    const orderId = req.params.id;
+    const { status } = req.body;
+
+    const query = `UPDATE orders SET status = ? WHERE order_id = ?`;
+    db.query(query, [status, orderId], (err, result) => {
+        if (err) {
+            console.error('خطأ أثناء تحديث حالة الطلب في الـ SQL:', err);
+            return res.status(500).json({ error: 'حدث خطأ في السيرفر' });
+        }
+        return res.json({ success: true, message: 'تم تحديث حالة الطلب بنجاح سحابياً!' });
+    });
+});
+
+// 5. تشغيل السيرفر وتحديد المنفذ
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => {
     console.log(`السيرفر يعمل الآن بنجاح على المنفذ ${PORT}`);
